@@ -15,6 +15,7 @@
 import remi.gui as gui
 import remi.server
 from remi import start, App
+from remi.server import encodeIfPyGT3
 import imp
 import inspect
 import sys
@@ -225,7 +226,9 @@ class Project(gui.Widget):
         
         return code_nested
 
-    def save(self, save_path_filename, configuration): 
+    def save(self, configuration): 
+        """ Returns the compiled code
+        """
         self.code_declared_classes = {}
         self.pending_listener_registration = list()
         self.known_project_children = [self,] #a list containing widgets that have been parsed and that are considered valid listeners 
@@ -235,8 +238,8 @@ class Project(gui.Widget):
         
         #the root widget have to appear at the center of the screen, regardless of the user positioning
         _position = self.children['root'].style['position']
-        _left = self.children['root'].style['left']
-        _top = self.children['root'].style['top']
+        _left = self.children['root'].style['left'][:]
+        _top = self.children['root'].style['top'][:]
 		
         self.children['root'].style['position'] = 'relative'
         del self.children['root'].style['left']
@@ -271,10 +274,7 @@ class Project(gui.Widget):
         self.children['root'].style['left'] = _left
         self.children['root'].style['top'] = _top
         
-        if save_path_filename!=None:
-            f = open(save_path_filename, "w")
-            f.write(compiled_code)
-            f.close()
+        return compiled_code
         
         
 class Editor(App):
@@ -296,16 +296,13 @@ class Editor(App):
         menu.style['z-index'] = '1'
         m1 = gui.MenuItem('File', width=150, height='100%')
         m10 = gui.MenuItem('New', width=150, height=30)
-        m11 = gui.MenuItem('Open', width=150, height=30)
         m12 = gui.MenuItem('Save Your App', width=150, height=30)
-        #m12.style['visibility'] = 'hidden'
-        m121 = gui.MenuItem('Save', width=100, height=30)
-        m122 = gui.MenuItem('Save as', width=100, height=30)
         m1.append(m10)
-        m1.append(m11)
         m1.append(m12)
-        m12.append(m121)
-        m12.append(m122)
+        
+        self.downloadLink = gui.Link("/%s/menu_save_clicked" % id(self), "Save", False)
+        self.downloadLink.attributes['download'] = 'app.py'
+        m12.set_text(self.downloadLink)
         
         m2 = gui.MenuItem('Edit', width=100, height='100%')
         m21 = gui.MenuItem('Cut', width=100, height=30)
@@ -328,17 +325,7 @@ class Editor(App):
         self.toolbar.add_command('/res/cut.png', self, 'menu_cut_selection_clicked', 'Cut Widget')
         self.toolbar.add_command('/res/paste.png', self, 'menu_paste_selection_clicked', 'Paste Widget')
         
-        self.fileOpenDialog = editor_widgets.EditorFileSelectionDialog('Open Project', 'Select the project file.<br>It have to be a python program created with this editor.', False, '.', True, False, self)
-        self.fileOpenDialog.set_on_confirm_value_listener(self, 'on_open_dialog_confirm')
-        
-        self.fileSaveAsDialog = editor_widgets.EditorFileSaveDialog('Project Save', 'Select the project folder and type a filename', False, '.', False, True, self)
-        self.fileSaveAsDialog.add_fileinput_field('untitled.py')
-        self.fileSaveAsDialog.set_on_confirm_value_listener(self, 'on_saveas_dialog_confirm')        
-
         m10.set_on_click_listener(self, 'menu_new_clicked')
-        m11.set_on_click_listener(self.fileOpenDialog, 'show')
-        m121.set_on_click_listener(self, 'menu_save_clicked')
-        m122.set_on_click_listener(self.fileSaveAsDialog, 'show')
         m21.set_on_click_listener(self, 'menu_cut_selection_clicked')
         m22.set_on_click_listener(self, 'menu_paste_selection_clicked')
         
@@ -461,9 +448,7 @@ class Editor(App):
                 var data = JSON.parse(event.dataTransfer.getData('application/json'));
                 var params={};
                 if( data[0] == 'add'){
-                    console.debug('addd---------------------------------------------');
                     sendCallback('%(id)s','%(event_click)s');
-                    console.debug('dopo---------------------------------------------');
                     params['left']=event.clientX-event.currentTarget.getBoundingClientRect().left;
                     params['top']=event.clientY-event.currentTarget.getBoundingClientRect().top;
                     sendCallbackParam(data[1],'%(evt)s',params);
@@ -516,34 +501,18 @@ class Editor(App):
         if 'root' in self.project.children.keys():
             self.project.remove_child( self.project.children['root'] )
 
-    def on_open_dialog_confirm(self, filelist):
-        if len(filelist):
-            widgetTree = self.project.load(filelist[0], self.projectConfiguration)
-            if widgetTree!=None:
-                self.add_widget_to_editor( widgetTree )
-            self.projectPathFilename = filelist[0]
-        
     def menu_save_clicked(self):
         #the resizeHelper have to be removed
         self.resizeHelper.setup(None, None)
-        if self.projectPathFilename == '':
-            self.fileSaveAsDialog.show()
-        else:
-            self.remove_box_shadow_selected_widget()
-            self.project.save(self.projectPathFilename, self.projectConfiguration)
+        self.remove_box_shadow_selected_widget()
+        compiled_code = encodeIfPyGT3(self.project.save(self.projectConfiguration))
+        headers = {'Content-type': 'application/octet-stream',
+                   'Content-Disposition': 'attachment; filename=%s' % (self.projectConfiguration.configDict['config_project_name']+'.py')}
+        return [compiled_code, headers]
     
     def remove_box_shadow_selected_widget(self):
         if 'box-shadow' in self.selectedWidget.style.keys():
             del self.selectedWidget.style['box-shadow']
-        
-    def on_saveas_dialog_confirm(self, path):
-        #the resizeHelper have to be removed
-        self.resizeHelper.setup(None, None)
-        if len(path):
-            self.projectPathFilename = path + '/' + self.fileSaveAsDialog.get_fileinput_value()
-            print("file:%s"%self.projectPathFilename)
-            self.remove_box_shadow_selected_widget()
-            self.project.save(self.projectPathFilename, self.projectConfiguration)
             
     def menu_cut_selection_clicked(self):
         if self.selectedWidget==self.project:
