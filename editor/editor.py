@@ -296,8 +296,10 @@ class Editor(App):
         menu.style['z-index'] = '1'
         m1 = gui.MenuItem('File', width=150, height='100%')
         m10 = gui.MenuItem('New', width=150, height=30)
+        m11 = gui.MenuItem('Open', width=150, height=30)
         m12 = gui.MenuItem('Save Your App', width=150, height=30)
         m1.append(m10)
+        m1.append(m11)
         m1.append(m12)
         
         self.downloadLink = gui.Link("/%s/menu_save_clicked" % id(self), "Save", False)
@@ -312,9 +314,12 @@ class Editor(App):
         
         m3 = gui.MenuItem('Project Config', width=200, height='100%')
         
+        m4 = gui.MenuItem('About', width=100, height='100%')
+        
         menu.append(m1)
         menu.append(m2)
         menu.append(m3)
+        menu.append(m4)
         
         menubar.append(menu)
         
@@ -326,10 +331,25 @@ class Editor(App):
         self.toolbar.add_command('/res/paste.png', self, 'menu_paste_selection_clicked', 'Paste Widget')
         
         m10.set_on_click_listener(self, 'menu_new_clicked')
+        
+        self.dialog_online_open = editor_widgets.InformativeDialog("Open functionality disabled.",
+        "In order to use Open functionality you can download the complete version at:", self, width=400)
+        self.dialog_online_open.add_field('link', gui.Link('https://github.com/dddomodossola/remi', 'https://github.com/dddomodossola/remi', open_new_window=True))
+        
+        m11.set_on_click_listener(self.dialog_online_open, 'show')
         m21.set_on_click_listener(self, 'menu_cut_selection_clicked')
         m22.set_on_click_listener(self, 'menu_paste_selection_clicked')
         
         m3.set_on_click_listener(self, 'menu_project_config_clicked')
+        
+        
+        self.dialog_about = editor_widgets.InformativeDialog("About REMI Editor.",
+        """This editor is part of REMI project. REMI is a Python GUI library that allows to build interfaces
+        for both standalone programs and webapplications. It exports directly in Python code.""", self, width=600)
+        self.dialog_about.add_field_with_label('link1', "REMI Project", gui.Link('https://github.com/dddomodossola/remi', 'https://github.com/dddomodossola/remi', open_new_window=True))
+        self.dialog_about.add_field_with_label('link2', "Editor tutorial", gui.Link('https://github.com/dddomodossola/remi/tree/master/editor', 'https://github.com/dddomodossola/remi/tree/master/editor', open_new_window=True))
+
+        m4.set_on_click_listener(self.dialog_about, 'show')
         
         self.subContainer = gui.HBox(width='100%', height='96%')
         #self.subContainer.style['display']='block'

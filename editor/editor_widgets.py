@@ -200,6 +200,17 @@ class EditorFileSelectionDialog(gui.FileSelectionDialog):
         super(EditorFileSelectionDialog, self).show(self.baseAppInstance)
 
 
+class InformativeDialog(gui.GenericDialog):
+    def __init__(self, title='Title', message='message', baseAppInstance = None, **kwargs):
+        super(InformativeDialog, self).__init__( title, message, **kwargs)
+        
+        self.baseAppInstance = baseAppInstance
+        self.cancel.style['display'] = 'none'
+        
+    def show(self):
+        super(InformativeDialog, self).show(self.baseAppInstance)
+        
+        
 class EditorFileSaveDialog(gui.FileSelectionDialog):
     def __init__(self, title='File dialog', message='Select files and folders', 
                 multiple_selection=True, selection_folder='.', 
