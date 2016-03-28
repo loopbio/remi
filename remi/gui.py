@@ -127,6 +127,11 @@ class Tag(object):
     You can use this class for sending javascript code to the clients.
     """
     def __init__(self, **kwargs):
+        """
+        Args:
+           _type (str): HTML element type or ''
+           _class (str): CSS class or '' (defaults to Class.__name__)
+        """
         self.kwargs = kwargs
         # the runtime instances are processed every time a requests arrives, searching for the called method
         # if a class instance is not present in the runtimeInstances, it will
@@ -290,24 +295,22 @@ class Widget(Tag):
     def __init__(self, **kwargs):
         """
         Args:
-            width (int or str): An optional width for the widget (es. width=10 or width='10px' or width='10%').
-            height (int or str): An optional height for the widget (es. height=10 or height='10px' or height='10%').
-            _type (str): HTML element type
+            width (int, str): An optional width for the widget (es. width=10 or width='10px' or width='10%').
+            height (int, str): An optional height for the widget (es. height=10 or height='10px' or height='10%').
+            margin (str): CSS margin specifier
+            layout_orientation (Widget.LAYOUT_VERTICAL, Widget.LAYOUT_HORIZONTAL): Widget layout, only honoured for
+                some widget types
         """
         if '_type' not in kwargs:
             kwargs['_type'] = 'div'
 
         super(Widget, self).__init__(**kwargs)
 
-        # centers the div
-        self.style['margin'] = '0px auto'
-
-        self.layout_orientation = Widget.LAYOUT_VERTICAL
-
+        self.eventManager = _EventManager()
         self.oldRootWidget = None  # used when hiding the widget
 
-        self.eventManager = _EventManager()
-
+        self.style['margin'] = kwargs.get('margin', '0px auto')  # centers the div
+        self.set_layout_orientation(kwargs.get('layout_orientation', Widget.LAYOUT_VERTICAL))
         self.set_size(kwargs.get('width'), kwargs.get('height'))
 
     def set_size(self, width, height):

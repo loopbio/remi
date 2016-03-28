@@ -25,8 +25,7 @@ class ToolBar(gui.Widget):
         self.style['background-color'] = 'white'
     
     def add_command(self, imagePath, listener, listenerFunction, title):
-        icon = gui.Image(imagePath, height='90%')
-        icon.style['margin'] = '0px 1px'
+        icon = gui.Image(imagePath, height='90%', margin='0px 1px')
         icon.style['outline'] = '1px solid lightgray'
         icon.set_on_click_listener(listener, listenerFunction)
         icon.attributes['title'] = title
@@ -259,9 +258,8 @@ class WidgetHelper(gui.HBox):
         super(WidgetHelper, self).__init__()
         self.style['display'] = 'block'
         self.style['background-color'] = 'white'
-        self.icon = gui.Image('/res/widget_%s.png'%self.widgetClass.__name__, width='auto')
+        self.icon = gui.Image('/res/widget_%s.png'%self.widgetClass.__name__, width='auto', margin='2px')
         self.icon.style['max-width'] = '100%'
-        self.icon.style['margin'] = '2px'
         self.icon.style['image-rendering'] = 'auto'
         self.icon.attributes['draggable'] = 'false'
         self.icon.attributes['ondragstart'] = "event.preventDefault();"
@@ -577,8 +575,7 @@ class EditorAttributeInput(gui.Widget):
         self.attributeDict = attributeDict
         self.EVENT_ATTRIB_ONCHANGE = 'on_attribute_changed'
         
-        label = gui.Label(attributeName, width='50%', height=22)
-        label.style['margin'] = '0px'
+        label = gui.Label(attributeName, width='50%', height=22, margin='0px')
         label.style['overflow'] = 'hidden'
         label.style['font-size'] = '13px'
         self.append(label)

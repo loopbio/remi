@@ -15,7 +15,7 @@
 import remi.gui as gui
 import remi.server
 from remi import start, App
-from remi.server import encodeIfPyGT3
+from remi.server import encode_text
 import imp
 import inspect
 import sys
@@ -286,8 +286,7 @@ class Editor(App):
         self.resizeHelper.update_position()
 
     def main(self):
-        self.mainContainer = gui.Widget(width='100%', height='100%')
-        self.mainContainer.set_layout_orientation(gui.Widget.LAYOUT_VERTICAL)
+        self.mainContainer = gui.Widget(width='100%', height='100%', layout_orientation=gui.Widget.LAYOUT_VERTICAL)
         self.mainContainer.style['background-color'] = 'white'
         self.mainContainer.style['border'] = 'none'
         
@@ -323,8 +322,7 @@ class Editor(App):
         
         menubar.append(menu)
         
-        self.toolbar = editor_widgets.ToolBar(width='100%', height='30px')
-        self.toolbar.style['margin'] = '0px 0px'
+        self.toolbar = editor_widgets.ToolBar(width='100%', height='30px', margin='0px 0px')
         self.toolbar.style['border-bottom'] = '1px solid rgba(0,0,0,.12)'
         self.toolbar.add_command('/res/delete.png', self, 'toolbar_delete_clicked', 'Delete Widget')
         self.toolbar.add_command('/res/cut.png', self, 'menu_cut_selection_clicked', 'Cut Widget')
@@ -342,7 +340,6 @@ class Editor(App):
         
         m3.set_on_click_listener(self, 'menu_project_config_clicked')
         
-        
         self.dialog_about = editor_widgets.InformativeDialog("About REMI Editor.",
         """This editor is part of REMI project. REMI is a Python GUI library that allows to build interfaces
         for both standalone programs and webapplications. It exports directly in Python code.""", self, width=600)
@@ -351,10 +348,8 @@ class Editor(App):
 
         m4.set_on_click_listener(self.dialog_about, 'show')
         
-        self.subContainer = gui.HBox(width='100%', height='96%')
-        #self.subContainer.style['display']='block'
-        self.subContainer.set_layout_orientation(gui.Widget.LAYOUT_HORIZONTAL)
-        #self.subContainer.style['background-color'] = 'transparent'
+        self.subContainer = gui.HBox(width='100%', height='96%', layout_orientation=gui.Widget.LAYOUT_HORIZONTAL)
+
         self.subContainer.style['position'] = 'relative'
         self.subContainer.style['overflow']='auto'
         self.subContainer.style['align-items']='stretch'
@@ -525,7 +520,7 @@ class Editor(App):
         #the resizeHelper have to be removed
         self.resizeHelper.setup(None, None)
         self.remove_box_shadow_selected_widget()
-        compiled_code = encodeIfPyGT3(self.project.save(self.projectConfiguration))
+        compiled_code = encode_text(self.project.save(self.projectConfiguration))
         headers = {'Content-type': 'application/octet-stream',
                    'Content-Disposition': 'attachment; filename=%s' % (self.projectConfiguration.configDict['config_project_name']+'.py')}
         return [compiled_code, headers]
