@@ -201,7 +201,8 @@ class Tag(object):
         """
         local_changed_widgets = {}
         innerHTML = ''
-        for s in self._render_children_list:
+        for k in self._render_children_list:
+            s = self.children[k]
             if isinstance(s, type('')):
                 innerHTML = innerHTML + s
             elif isinstance(s, type(u'')):
@@ -253,8 +254,8 @@ class Tag(object):
             child.attributes['data-parent-widget'] = self.identifier
 
         if key in self.children:
-            self._render_children_list.remove(self.children[key])
-        self._render_children_list.append(child)
+            self._render_children_list.remove(key)
+        self._render_children_list.append(key)
 
         self.children[key] = child
 
@@ -278,11 +279,10 @@ class Tag(object):
             child (Tag): The child to be removed.
         """
         if child in self.children.values():
-            self._render_children_list.remove(child)
             for k in self.children.keys():
                 if self.children[k].identifier == child.identifier:
                     if k in self._render_children_list:
-                        self._render_children_list.remove(self.children[k])
+                        self._render_children_list.remove(k)
                     self.children.pop(k)
                     # when the child is removed we stop the iteration
                     # this implies that a child replication should not be allowed
@@ -360,7 +360,7 @@ class Widget(Tag):
         self.eventManager = _EventManager(self)
         self.oldRootWidget = None  # used when hiding the widget
 
-        self.style['margin'] = kwargs.get('margin', '0px auto')  # centers the div
+        self.style['margin'] = kwargs.get('margin', '0px')
         self.set_layout_orientation(kwargs.get('layout_orientation', Widget.LAYOUT_VERTICAL))
         self.set_size(kwargs.get('width'), kwargs.get('height'))
 
@@ -904,6 +904,8 @@ class TabBox(Widget):
         # maps tabs to their corresponding tab header
         self._tabs = {}
 
+        self._tablist = list()
+
     def _fix_tab_widths(self):
         tab_w = 100.0 / len(self._tabs)
         for a, li, holder in self._tabs.values():
@@ -924,13 +926,24 @@ class TabBox(Widget):
         if cb is not None:
             cb()
 
-    def show_tab(self, widget):
+    def select_by_widget(self, widget):
         """ shows a tab identified by the contained widget """
         for a, li, holder in self._tabs.values():
             if holder.children['content'] == widget:
                 self._on_tab_pressed(a, li, holder)
                 return
 
+    def select_by_name(self, name):
+        """ shows a tab identified by the name """
+        for a, li, holder in self._tabs.values():
+            if a.children['text'] == name:
+                self._on_tab_pressed(a, li, holder)
+                return
+
+    def select_by_index(self, index):
+        """ shows a tab identified by its index """
+        self._on_tab_pressed(*self._tablist[index])
+                
     def add_tab(self, widget, name, tab_cb):
 
         holder = Tag(_type='div', _class='')
@@ -966,7 +979,7 @@ class TabBox(Widget):
 
         self._tabs[holder.identifier] = (a, li, holder)
         self._fix_tab_widths()
-
+        self._tablist.append((a, li, holder))
         return holder.identifier
 
 
@@ -1188,6 +1201,7 @@ class GenericDialog(Widget):
         self.set_layout_orientation(Widget.LAYOUT_VERTICAL)
         self.style['display'] = 'block'
         self.style['overflow'] = 'auto'
+        self.style['margin'] = '0px auto'
 
         if len(title) > 0:
             t = Label(title)
@@ -1244,6 +1258,7 @@ class GenericDialog(Widget):
         label.style['margin'] = '0px 5px'
         label.style['min-width'] = '30%'
         container = HBox()
+        container.style['justify-content'] = 'space-between'
         container.style['overflow'] = 'auto'
         container.style['padding'] = '3px'
         container.append(label, key='lbl' + key)
@@ -1261,11 +1276,10 @@ class GenericDialog(Widget):
             field (Widget): The widget to be added to the dialog, TextInput or any Widget for example.
         """
         self.inputs[key] = field
-        container = Widget()
-        container.style['display'] = 'block'
+        container = HBox()
+        container.style['justify-content'] = 'space-between'
         container.style['overflow'] = 'auto'
         container.style['padding'] = '3px'
-        container.set_layout_orientation(Widget.LAYOUT_HORIZONTAL)
         container.append(self.inputs[key], key=key)
         self.container.append(container, key=key)
 
@@ -1733,24 +1747,58 @@ class Table(Widget):
         self.type = 'table'
         self.style['float'] = 'none'
 
-    def from_2d_matrix(self, _matrix, fill_title=True):
+    @classmethod
+    def new_from_list(cls, content, fill_title=True, **kwargs):
+        """Populates the Table with a list of tuples of strings.
+
+        Args:
+            content (list): list of tuples of strings. Each tuple is a row.
+            fill_title (bool): if true, the first tuple in the list will 
+                be set as title
         """
-        Fills the table with the data contained in the provided 2d _matrix
-        The first row of the matrix is set as table title
+        obj = cls(**kwargs)
+        obj.append_from_list(content, fill_title)
+        return obj
+        
+    def append_from_list(self, content, fill_title=False):
         """
-        for child_keys in list(self.children):
-            self.remove_child(self.children[child_keys])
+        Appends rows created from the data contained in the provided 
+        list of tuples of strings. The first tuple of the list can be 
+        set as table title.
+        
+        Args:
+            content (list): list of tuples of strings. Each tuple is a row.
+            fill_title (bool): if true, the first tuple in the list will 
+                be set as title.
+        """
         first_row = True
-        for row in _matrix:
+        for row in content:
+            key = ''
             tr = TableRow()
             for item in row:
                 if first_row and fill_title:
                     ti = TableTitle(item)
+                    key = 'title'
                 else:
                     ti = TableItem(item)
                 tr.append(ti)
-            self.append(tr)
+            self.append(tr, key)
             first_row = False
+    
+    def empty(self, keep_title=False):
+        """
+        Deletes the table rows.
+        
+        Args:
+            keep_title (bool): whether to delete all the content except 
+                the title.
+        """
+        title = None
+        if 'title' in self.children.keys():
+            title = self.children['title']
+        super(Table, self).empty()
+        if keep_title and title != None:
+            self.append(title, 'title')
 
 
 class TableRow(Widget):
@@ -2022,6 +2070,7 @@ class FileFolderNavigator(Widget):
     def __init__(self, multiple_selection, selection_folder, allow_file_selection, allow_folder_selection, **kwargs):
         super(FileFolderNavigator, self).__init__(**kwargs)
         self.set_layout_orientation(Widget.LAYOUT_VERTICAL)
+        self.style['width'] = '100%'
 
         self.multiple_selection = multiple_selection
         self.allow_file_selection = allow_file_selection
@@ -2030,7 +2079,7 @@ class FileFolderNavigator(Widget):
         self.controlsContainer = Widget()
         self.controlsContainer.set_size('100%', '30px')
         self.controlsContainer.style['display'] = 'flex'
-        self.controlsContainer.set_layout_orientation(Widget.LAYOUT_VERTICAL)
+        self.controlsContainer.set_layout_orientation(Widget.LAYOUT_HORIZONTAL)
         self.controlBack = Button('Up')
         self.controlBack.set_size('10%', '100%')
         self.controlBack.set_on_click_listener(self.dir_go_back)
@@ -2045,7 +2094,7 @@ class FileFolderNavigator(Widget):
         self.controlsContainer.append(self.pathEditor)
         self.controlsContainer.append(self.controlGo)
 
-        self.itemContainer = Widget()
+        self.itemContainer = Widget(width='100%',height=300)
 
         self.append(self.controlsContainer)
         self.append(self.itemContainer, key='items')  # defined key as this is replaced later
@@ -2085,11 +2134,10 @@ class FileFolderNavigator(Widget):
         # this speeds up the navigation
         self.remove_child(self.itemContainer)
         # creation of a new instance of a itemContainer
-        self.itemContainer = Widget()
+        self.itemContainer = Widget(width='100%',height=300)
         self.itemContainer.set_layout_orientation(Widget.LAYOUT_VERTICAL)
         self.itemContainer.style['overflow-y'] = 'scroll'
         self.itemContainer.style['overflow-x'] = 'hidden'
-        self.itemContainer.style['height'] = '300px'
         self.itemContainer.style['display'] = 'block'
 
         for i in l:
