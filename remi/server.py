@@ -22,6 +22,10 @@ try:
     import socketserver
 except:
     import SocketServer as socketserver
+try:
+    from StringIO import StringIO as IO
+except ImportError:
+    from io import BytesIO as IO
 import mimetypes
 import webbrowser
 import struct
@@ -380,9 +384,10 @@ class App(BaseHTTPRequestHandler, object):
         multiple clients" or "multiple instance for multiple clients" execution way
         """
         k = get_instance_key(self)
-        if not(k in clients):
+        if not (k in clients):
             runtimeInstances[str(id(self))] = self
             clients[k] = self
+
         wshost, wsport = self.server.websocket_address
 
         net_interface_ip = self.connection.getsockname()[0]
@@ -897,6 +902,11 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
         self.userdata = userdata
 
 
+class _MockHEADRequest(object):
+    def makefile(self, *args, **kwargs):
+        return IO(b"HEAD /")
+
+
 class Server(object):
     # noinspection PyShadowingNames
     def __init__(self, gui_class, title='', start=True, address='127.0.0.1', port=8081, username=None, password=None,
@@ -976,6 +986,17 @@ class Server(object):
         self._sth = threading.Thread(target=self._sserver.serve_forever)
         self._sth.daemon = True
         self._sth.start()
+
+        # if we are in single instance mode, we can manually construct the GUI now,
+        # rather than waiting for the first HTTP request
+        if not self._multiple_instance and not self._start_browser:
+            global clients, update_lock, runtimeInstances
+            with update_lock:
+                # the arguments to the request class don't really matter here, other than they should
+                # not trigger any do_GET processing, as we call main() manually.
+                clients[0] = self._gui(_MockHEADRequest(), ('0.0.0.0', 1), self)
+                clients[0].root = clients[0].main(*self._userdata)  # keep in sync with _instance()
+                runtimeInstances[str(id(clients[0]))] = clients[0]
 
     def serve_forever(self):
         # we could join on the threads, but join blocks all interupts (including
