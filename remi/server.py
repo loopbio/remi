@@ -904,14 +904,14 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
 
 class _MockHEADRequest(object):
     def makefile(self, *args, **kwargs):
-        return IO(b"HEAD /")
+        return IO(b"HEAD / HTTP/1.1")
 
 
 class Server(object):
     # noinspection PyShadowingNames
     def __init__(self, gui_class, title='', start=True, address='127.0.0.1', port=8081, username=None, password=None,
                  multiple_instance=False, enable_file_cache=True, update_interval=0.1, start_browser=True,
-                 websocket_timeout_timer_ms=1000, websocket_port=0, host_name=None,
+                 websocket_timeout_timer_ms=1000, websocket_port=0, host_name=None, construct_now=False,
                  pending_messages_queue_length=1000, userdata=()):
         self._gui = gui_class
         self._title = title or gui_class.__name__
@@ -927,6 +927,7 @@ class Server(object):
         self._websocket_timeout_timer_ms = websocket_timeout_timer_ms
         self._websocket_port = websocket_port
         self._host_name = host_name
+        self._construct_now = construct_now
         self._pending_messages_queue_length = pending_messages_queue_length
         self._userdata = userdata
         if username and password:
@@ -989,7 +990,7 @@ class Server(object):
 
         # if we are in single instance mode, we can manually construct the GUI now,
         # rather than waiting for the first HTTP request
-        if not self._multiple_instance and not self._start_browser:
+        if self._construct_now and (not self._multiple_instance) and (not self._start_browser):
             global clients, update_lock, runtimeInstances
             with update_lock:
                 # the arguments to the request class don't really matter here, other than they should
